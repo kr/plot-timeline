@@ -54,10 +54,13 @@ def string_has_substrings (string, substrings):
     return False
 
 # basic (non-strace) format
-doozer_regex = re.compile (r'^(\d+\.\d+) +([^:]*: )(.*)')
-doozer_timestamp_group = 1
-doozer_program_group = 2
-doozer_log_group = 3
+# Example:
+# doozerd: store 18:53:24.599973 store.go:266: apply set 4 /doozer/slot/1 a0019c85.9ac8ceaa 4 <nil>
+doozer_regex = re.compile (r'^doozerd:.*(\d+):(\d+):(\d+.\d+) +(.*)')
+doozer_hour_group = 1
+doozer_min_group  = 2
+doozer_sec_group  = 3
+doozer_log_group  = 4
 
 # assumes "strace -ttt -f"
 mark_regex = re.compile (r'^\d+ +(\d+\.\d+) +access\("MARK: ([^:]*: )(.*)", F_OK.*')
@@ -97,6 +100,7 @@ class BaseMark:
         self.log_ypos = 0
 
 class SimpleMark(BaseMark):
+    colors = 1.0, 0, 0
     pass
 
 class AccessMark(BaseMark):
@@ -162,11 +166,13 @@ class SyscallParser:
     def add_line (self, str):
         m = doozer_regex.search (str)
         if m:
-            result = m.group (doozer_result_group)
-            if result == success_result:
-                timestamp = float (m.group (doozer_timestamp_group))
-                command = m.group (doozer_command_group)
-                self.syscalls.append (SimpleMark (timestamp, command, True, False))
+            H = int (m.group(doozer_hour_group))
+            M = int (m.group(doozer_min_group))
+            S = float (m.group(doozer_sec_group))
+
+            timestamp = (H*3600)+(M*60)+(S)
+            command = m.group (doozer_log_group)
+            self.syscalls.append (SimpleMark (timestamp, command))
 
             return
 
