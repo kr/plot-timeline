@@ -53,6 +53,12 @@ def string_has_substrings (string, substrings):
 
     return False
 
+# basic (non-strace) format
+doozer_regex = re.compile (r'^(\d+\.\d+) +([^:]*: )(.*)')
+doozer_timestamp_group = 1
+doozer_program_group = 2
+doozer_log_group = 3
+
 # assumes "strace -ttt -f"
 mark_regex = re.compile (r'^\d+ +(\d+\.\d+) +access\("MARK: ([^:]*: )(.*)", F_OK.*')
 mark_timestamp_group = 1
@@ -89,6 +95,9 @@ class BaseMark:
         self.log = log
         self.timestamp_ypos = 0
         self.log_ypos = 0
+
+class SimpleMark(BaseMark):
+    pass
 
 class AccessMark(BaseMark):
     pass
@@ -151,6 +160,16 @@ class SyscallParser:
         return (None, None, None)
 
     def add_line (self, str):
+        m = doozer_regex.search (str)
+        if m:
+            result = m.group (doozer_result_group)
+            if result == success_result:
+                timestamp = float (m.group (doozer_timestamp_group))
+                command = m.group (doozer_command_group)
+                self.syscalls.append (SimpleMark (timestamp, command, True, False))
+
+            return
+
         m = mark_regex.search (str)
         if m:
             timestamp = float (m.group (mark_timestamp_group))
